@@ -4,6 +4,7 @@
       
     attr_accessor :object
     attr_accessor :associations
+    attr_accessor :history_message
     
     def initialize(object)
       self.object = object
@@ -18,17 +19,45 @@
     end
     
     def save(options = { :validate => true })
-      object.save(options) and update_all_associations
+      prepare_history_message
+      
+      object.save(options) and update_all_associations and save_history
     end
     
     protected
     
+    
+    def prepare_history_message
+      action = object.new_record? ? "Created" : "Updated"
+      label = model_config.bind(:object, object).list.object_label
+      self.history_message = "#{action} #{label}"
+    end
+    
+    def save_history
+      date = Time.now
+      
+      History.create(
+        :message => history_message,
+        :item => object.id,
+        :table => model.pretty_name,
+        :username => "",
+        :month => date.month,
+        :year => date.year
+      )
+    end
+    
+    def model
+      @model ||= AbstractModel.new(object.class.name)
+    end
+    
+    def model_config
+      @model_config ||= RailsAdmin.config(model)
+    end
+    
     def update_all_associations
-      return if associations.nil?
+      return true if associations.nil?
       
-      abstract_model = AbstractModel.new(object.class.name)
-      
-      abstract_model.associations.each do |association|
+      model.associations.each do |association|
         if associations.has_key?(association[:name])
           ids = (associations || {}).delete(association[:name])
           case association[:type]

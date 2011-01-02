@@ -104,4 +104,22 @@ describe "AbstractObject" do
       Player.exists?(player.id).should == false
     end
   end
+
+  context "history" do
+    describe "create" do
+      let(:player) { Factory.build :player }
+      let(:object) { RailsAdmin::AbstractObject.new player }
+
+      it "should create a history entry for create action" do
+          proc { 
+            object.save.should be_true
+          }.should change(RailsAdmin::History, :count).by(1)
+      end
+      
+      it "should create a history entry with proper message" do
+        history = RailsAdmin::History.last
+        history.message.should == "Created #{player.name}"
+      end
+    end
+  end
 end
